@@ -1,0 +1,52 @@
+import hmac
+from hashlib import sha256
+import time
+import requests
+from urllib.parse import quote
+import pandas as pd
+
+# 实现 返回 hmac_sha256 算法
+def hmac_sha256(key, value):
+    message = value.encode('utf-8')
+    return hmac.new(key.encode('utf-8'), message, digestmod=sha256).hexdigest()
+
+# 抓取数据
+# 参数为需要搜索的招聘信息内容,页码
+def get_data(search,page):
+    target = "https://cupid.51job.com"
+    # hmac_sha256 密钥
+    key = "abfc8f9dcf8c3f3d8aa294ac5f2cf2cc7767e5592590f39c3f503271dd68562b"
+    # hmac_sha256 加密信息 时间戳 搜索的关键词
+    value = f"/open/noauth/search-pc?api_key=51job×tamp={str(int(time.time()))}&keyword={search}&searchType=2&function=&industry=&jobArea=000000&jobArea2=&landmark=&metro=&salary=&workYear=°ree=&companyType=&companySize=&jobType=&issueDate=&sortType=0&pageNum={page}&requestId=&pageSize=50&source=1&accountId=&pageCode=sou%7Csou%7Csoulb"
+    # 请求头
+    headers = {
+        "sign": hmac_sha256(key, value),
+    }
+    print("sign:",headers['sign'])
+    # 获取响应 json 格式化
+    response = requests.get(url=target+value,headers=headers).json()
+    return response
+
+# 生成csv
+# 参数 csv文件名,csv数据
+def generate_csv(file_name,data):
+    csv_data = pd.DataFrame(data)
+    csv_data.to_csv(f"./{file_name}.csv")
+
+def main():
+    #岗位
+    search_word = "python实习生"
+    # 最后的csv的数据
+    result = list()
+    # 对关键词进行url编码 否则无法实现中文爬虫
+    # 翻页
+    for page in range(1,10):
+        job_data = get_data(search=quote(search_word), page=page)["resultbody"]['job']["items"]
+        print(f"[Success] Crawler Page:{page} | OVER",)
+        result += job_data
+    # 生成csv
+    generate_csv(file_name=search_word, data=result)
+    print(f"[Success] Generate-Csv {search_word}.csv | OVER")
+
+if __name__ == "__main__":
+    main()
